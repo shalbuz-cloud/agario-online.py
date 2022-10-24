@@ -25,8 +25,13 @@ class Player:
         self.y = y
         self.r = r
         self.color = color
+
+        self.w_vision = 1000
+        self.h_vision = 800
+
         self.errors = 0
-        self.abs_speed = 10
+
+        self.abs_speed = 1
         self.speed_x = 5
         self.speed_y = 2
 
@@ -112,14 +117,55 @@ while server_works:
 
         player.update()  # Обновляем координаты
 
+    # Определим, что видит каждый игрок
+    visible_balls = [[] for i in range(len(players))]
+    for i in range(len(players)):
+        for j in range(i + 1, len(players)):
+            # Рассматриваем пару i и j игрока
+            dist_x = players[j].x - players[i].x
+            dist_y = players[j].y - players[i].y
+
+            # i видит j
+            if (
+                    abs(dist_x) <= players[i].w_vision // 2 + players[j].r
+                    and
+                    abs(dist_y) <= players[i].h_vision // 2 + players[j].r
+            ):
+                # Подготовим данные к добавлению в список видимых игроков
+                x_ = str(round(dist_x))
+                y_ = str(round(dist_y))
+                r_ = str(round(players[j].r))
+                c_ = players[j].color
+
+                visible_balls[i].append(' '.join([x_, y_, r_, c_]))
+
+            # j видит i
+            if (
+                    abs(dist_x) <= players[j].w_vision // 2 + players[i].r
+                    and
+                    abs(dist_y) <= players[j].h_vision // 2 + players[i].r
+            ):
+                # Подготовим данные к добавлению в список видимых игроков
+                x_ = str(round(-dist_x))
+                y_ = str(round(-dist_y))
+                r_ = str(round(players[i].r))
+                c_ = players[i].color
+
+                visible_balls[j].append(' '.join([x_, y_, r_, c_]))
+
+    # Формируем ответ каждому игроку
+    responses = ['' for i in range(len(players))]
+    for i in range(len(players)):
+        responses[i] = "<%s>" % ",".join(visible_balls[i])
+
     # Отправляем новое состояние игрового поля
-    for player in players:
+    for i in range(len(players)):
         try:
-            player.conn.send('Новое состояние игры'.encode())
-            player.errors = 0
+            players[i].conn.send(responses[i].encode())
+            players[i].errors = 0
         except:  # FIXME: Скорректировать исключение
             # Накапливаем ошибки при неудачных попытках подключения
-            player.errors += 1
+            players[i].errors += 1
 
     # Чистим список от отвалившихся игроков
     for player in players:

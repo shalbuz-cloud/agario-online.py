@@ -4,6 +4,19 @@ import pygame
 
 WIDTH_WINDOW, HEIGHT_WINDOW = 1000, 800
 
+
+def find(s: str) -> str:
+    obr = None
+    for i in range(len(s)):
+        if s[i] == "<":
+            obr = i
+        elif s[i] == ">" and obr is not None:
+            cbr = i
+            res = s[obr + 1:cbr]
+            return res
+    return ""
+
+
 # Подключение к серверу
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -40,7 +53,8 @@ while running:
 
     # Получаем от сервера новое состояние игрового поля
     data = sock.recv(2**20).decode()
-    # data = sock.recv(1024).decode()
+    data = find(data)
+    print('Получил: ', data)
 
     # Рисуем новое состояние игрового поля
     screen.fill('gray25')
