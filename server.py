@@ -26,15 +26,27 @@ class Player:
         self.r = r
         self.color = color
         self.errors = 0
+        self.abs_speed = 10
         self.speed_x = 5
         self.speed_y = 2
 
-    def update(self):
+    def update(self) -> None:
         self.x += self.speed_x
         self.y += self.speed_y
 
-    def change_speed(self, vector):
-        ...
+    def change_speed(self, vector: list) -> None:
+
+        # Если курсор на бактерии
+        if (vector[0] == 0) and (vector[1] == 0):
+            self.speed_x = 0
+            self.speed_y = 0
+        else:
+            # Вычисляем длину вектора по теореме Пифагора
+            len_vector = (vector[0] ** 2 + vector[1] ** 2) ** 0.5
+            # Нормируем вектор
+            vector = (vector[0] / len_vector, vector[1] / len_vector)
+            vector = (vector[0] * self.abs_speed, vector[1] * self.abs_speed)
+            self.speed_x, self.speed_y = vector[0], vector[1]
 
 
 def find(s: str) -> list:
@@ -93,13 +105,12 @@ while server_works:
         try:
             data = player.conn.recv(1024).decode()
             data = find(data)
+            # Обрабатываем команды
             player.change_speed(data)
         except:
             pass
 
         player.update()  # Обновляем координаты
-
-    # Обрабатываем команды
 
     # Отправляем новое состояние игрового поля
     for player in players:
