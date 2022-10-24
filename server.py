@@ -29,9 +29,26 @@ class Player:
         self.speed_x = 5
         self.speed_y = 2
 
-    def update(self) -> None:
-        self.x += self.speed_x
-        self.y += self.speed_y
+    def update(self) -> None:  # TODO: Убрать дублирование кода
+        # x coordinate
+        if self.x - self.r <= 0:  # Достиг левой стены
+            if self.speed_x >= 0:  # Разрешаем идти только вправо
+                self.x += self.speed_x
+        elif self.x + self.r >= WIDTH_ROOM:  # Достиг правой стены
+            if self.speed_x <= 0:  # Разрешаем идти только влево
+                self.x += self.speed_x
+        else:  # Не достиг стен
+            self.x += self.speed_x
+
+        # y coordinate
+        if self.y - self.r <= 0:  # Достиг верхней стены
+            if self.speed_y >= 0:  # Разрешаем идти только вниз
+                self.y += self.speed_y
+        elif self.y + self.r >= HEIGHT_ROOM:  # Достиг нижней стены
+            if self.speed_y <= 0:  # Разрешаем идти только вверх
+                self.y += self.speed_y
+        else:  # Не достиг стен
+            self.y += self.speed_y
 
     def change_speed(self, vector: list) -> None:
 
