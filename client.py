@@ -2,6 +2,8 @@ import socket
 
 import pygame
 
+from config import COLORS
+
 WIDTH_WINDOW, HEIGHT_WINDOW = 1000, 800
 
 
@@ -17,10 +19,23 @@ def find(s: str) -> str:
     return ""
 
 
+def draw_enemies(data):
+    for i in range(len(data)):
+        j = data[i].split(' ')
+
+        x = WIDTH_WINDOW // 2 + int(j[0])
+        y = HEIGHT_WINDOW // 2 + int(j[1])
+        r = int(j[2])
+        c = COLORS[j[3]]
+        pygame.draw.circle(screen, c, (x, y), r)
+
+
 # Подключение к серверу
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 sock.connect(('localhost', 10000))
+
+color = sock.recv(16).decode()
 
 # Создание окна игры
 pygame.init()
@@ -53,14 +68,15 @@ while running:
 
     # Получаем от сервера новое состояние игрового поля
     data = sock.recv(2**20).decode()
-    data = find(data)
-    print('Получил: ', data)
+    data = find(data).split(',')
 
     # Рисуем новое состояние игрового поля
     screen.fill('gray25')
     pygame.draw.circle(
-        screen, (255, 0, 0), (WIDTH_WINDOW // 2, HEIGHT_WINDOW // 2), 50
+        screen, COLORS[color], (WIDTH_WINDOW // 2, HEIGHT_WINDOW // 2), 50
     )
+    if data != ['']:
+        draw_enemies(data)
     pygame.display.update()
 
 pygame.quit()

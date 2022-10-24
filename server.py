@@ -3,18 +3,12 @@ from random import randint
 
 import pygame
 
+from config import COLORS
+
 FPS = 100
 WIDTH_ROOM, HEIGHT_ROOM = 4000, 4000
 WIDTH_SERVER_WINDOW, HEIGHT_SERVER_WINDOW = 300, 300
 START_PLAYER_SIZE = 50  # px
-
-colors = {
-    '0': (255, 255, 0),
-    '1': (255, 0, 0),
-    '2': (0, 255, 0),
-    '3': (0, 255, 255),
-    '4': (128, 0, 128),
-}
 
 
 class Player:
@@ -89,15 +83,16 @@ while server_works:
         client, addr = server.accept()
         print('Подключился ', addr)
         client.setblocking(False)
-
-        players.append(Player(
+        new_player = Player(
             client,
             addr,
             randint(0, WIDTH_ROOM),
             randint(0, HEIGHT_ROOM),
             START_PLAYER_SIZE,
-            str(randint(0, len(colors) - 1))
-        ))
+            str(randint(0, len(COLORS) - 1))
+        )
+        new_player.conn.send(new_player.color.encode())
+        players.append(new_player)
 
     except BlockingIOError:
         pass
@@ -183,7 +178,7 @@ while server_works:
         x = round(player.x * WIDTH_SERVER_WINDOW / WIDTH_ROOM)
         y = round(player.y * HEIGHT_SERVER_WINDOW / HEIGHT_ROOM)
         r = round(player.r * WIDTH_SERVER_WINDOW / WIDTH_ROOM)
-        c = colors[player.color]
+        c = COLORS[player.color]
 
         pygame.draw.circle(screen, c, (x, y), r)
     pygame.display.update()
