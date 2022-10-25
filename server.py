@@ -159,32 +159,56 @@ while server_works:
             dist_y = players[j].y - players[i].y
 
             # i видит j
-            if players[i].conn is not None and (  # Если не бот
+            if (
                     abs(dist_x) <= players[i].w_vision // 2 + players[j].r
                     and
                     abs(dist_y) <= players[i].h_vision // 2 + players[j].r
             ):
-                # Подготовим данные к добавлению в список видимых игроков
-                x_ = str(round(dist_x))
-                y_ = str(round(dist_y))
-                r_ = str(round(players[j].r))
-                c_ = players[j].color
+                # i может съесть j  # TODO: Убрать дублирование
+                # Если центр бактерии j внутри i
+                if (dist_x ** 2 + dist_y ** 2) ** 0.5 <= players[i].r \
+                        and players[i].r > 1.1 * players[j].r:
+                    # Изменим радиус i игрока
+                    ...
+                    # Обнулим данные игрока, чтобы не отключать сразу
+                    players[j].r = 0
+                    players[j].speed_x = 0
+                    players[j].speed_y = 0
 
-                visible_balls[i].append(' '.join([x_, y_, r_, c_]))
+                if players[i].conn is not None:  # Если не бот
+                    # Подготовим данные к добавлению в список видимых игроков
+                    x_ = str(round(dist_x))
+                    y_ = str(round(dist_y))
+                    r_ = str(round(players[j].r))
+                    c_ = players[j].color
+
+                    visible_balls[i].append(' '.join([x_, y_, r_, c_]))
 
             # j видит i
-            if players[j].conn is not None and (  # Если не бот
+            if (
                     abs(dist_x) <= players[j].w_vision // 2 + players[i].r
                     and
                     abs(dist_y) <= players[j].h_vision // 2 + players[i].r
             ):
-                # Подготовим данные к добавлению в список видимых игроков
-                x_ = str(round(-dist_x))
-                y_ = str(round(-dist_y))
-                r_ = str(round(players[i].r))
-                c_ = players[i].color
+                # j может съесть i  # TODO: Убрать дублирование
+                # Если центр бактерии j внутри i
+                if (dist_x ** 2 + dist_y ** 2) ** 0.5 <= players[j].r \
+                        and players[j].r > 1.1 * players[i].r:
+                    # Изменим радиус j игрока
+                    ...
+                    # Обнулим данные игрока, чтобы не отключать сразу
+                    players[i].r = 0
+                    players[i].speed_x = 0
+                    players[i].speed_y = 0
 
-                visible_balls[j].append(' '.join([x_, y_, r_, c_]))
+                if players[j].conn is not None:  # Если не бот
+                    # Подготовим данные к добавлению в список видимых игроков
+                    x_ = str(round(-dist_x))
+                    y_ = str(round(-dist_y))
+                    r_ = str(round(players[i].r))
+                    c_ = players[i].color
+
+                    visible_balls[j].append(' '.join([x_, y_, r_, c_]))
 
     # Формируем ответ каждому игроку
     responses = ['' for i in range(len(players))]
@@ -203,8 +227,10 @@ while server_works:
 
     # Чистим список от отвалившихся игроков
     for player in players:
-        if player.errors >= 500:
-            player.conn.close()
+        # TODO: Вынести статус игрока в отдельный параметр
+        if player.errors >= 500 or (player.r == 0):
+            if player.conn is not None:
+                player.conn.close()
             players.remove(player)
 
     # Нарисуем состояние комнаты
