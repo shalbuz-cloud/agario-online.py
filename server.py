@@ -9,25 +9,26 @@ FPS = 100
 WIDTH_ROOM, HEIGHT_ROOM = 4000, 4000
 WIDTH_SERVER_WINDOW, HEIGHT_SERVER_WINDOW = 300, 300
 START_PLAYER_SIZE = 50  # px
+MOBS_QUANTITY = 25
 
 
 class Player:
     def __init__(self, conn, addr, x, y, r, color):
         self.conn = conn
         self.addr = addr
-        self.x = x
-        self.y = y
-        self.r = r
-        self.color = color
+        self.x: int | float = x
+        self.y: int | float = y
+        self.r: int | float = r
+        self.color: str = color
 
-        self.w_vision = 1000
-        self.h_vision = 800
+        self.w_vision: int = 1000
+        self.h_vision: int = 800
 
-        self.errors = 0
+        self.errors: int = 0
 
-        self.abs_speed = 1
-        self.speed_x = 5
-        self.speed_y = 2
+        self.abs_speed: int = 1
+        self.speed_x: int = 5
+        self.speed_y: int = 2
 
     def update(self) -> None:  # TODO: Убрать дублирование кода
         # x coordinate
@@ -78,7 +79,7 @@ def find(s: str) -> list:
     return []  # ""
 
 
-# Создание сокета
+# Создание сокета  # TODO: Сделать сокет асинхронным
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 server.bind(('localhost', 10000))
@@ -90,42 +91,62 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH_SERVER_WINDOW, HEIGHT_SERVER_WINDOW))
 clock = pygame.time.Clock()
 
-players = []
+# Создание стартового набора мобов
+players = [
+    Player(
+        None,
+        None,
+        randint(0, WIDTH_ROOM),
+        randint(0, HEIGHT_ROOM),
+        randint(10, 100),
+        str(randint(0, len(COLORS) - 1))
+    ) for i in range(MOBS_QUANTITY)
+]
+
+tick = -1  # Игровой цикл (ограничение)
 server_works = True
 while server_works:
+    tick += 1
     clock.tick(FPS)  # Ограничение fps
-    # Проверим, есть ли желающие войти в игру
-    try:
-        # FIXME: Переделать try на метод сокета, чтобы не падало при ошибке
-        client, addr = server.accept()
-        print('Подключился ', addr)
-        client.setblocking(False)
-        new_player = Player(
-            client,
-            addr,
-            randint(0, WIDTH_ROOM),
-            randint(0, HEIGHT_ROOM),
-            START_PLAYER_SIZE,
-            str(randint(0, len(COLORS) - 1))
-        )
-        new_player.conn.send(new_player.color.encode())
-        players.append(new_player)
+    if tick == 200:  # Раз в 2 сек
+        tick = 0
+        # Проверим, есть ли желающие войти в игру
+        try:
+            # FIXME: Переделать try на метод сокета, чтобы не падало при ошибке
+            client, addr = server.accept()
+            print('Подключился ', addr)
+            client.setblocking(False)
+            new_player = Player(
+                client,
+                addr,
+                randint(0, WIDTH_ROOM),
+                randint(0, HEIGHT_ROOM),
+                START_PLAYER_SIZE,
+                str(randint(0, len(COLORS) - 1))
+            )
+            new_player.conn.send(new_player.color.encode())
+            players.append(new_player)
 
-    except BlockingIOError:
-        pass
-    except KeyboardInterrupt:
-        server.close()
-        break
+        except BlockingIOError:
+            pass
+        except KeyboardInterrupt:
+            server.close()
+            break
 
     # Считываем команды игроков
     for player in players:
-        try:
-            data = player.conn.recv(1024).decode()
-            data = find(data)
-            # Обрабатываем команды
-            player.change_speed(data)
-        except:
-            pass
+        if player.conn is not None:  # Если не бот
+            try:
+                data = player.conn.recv(1024).decode()
+                data = find(data)
+                # Обрабатываем команды
+                player.change_speed(data)
+            except:
+                pass
+        else:
+            if tick == 100:  # TODO: Оптимизировать
+                data = [randint(-100, 100), randint(-100, 100)]
+                player.change_speed(data)
 
         player.update()  # Обновляем координаты
 
@@ -138,7 +159,7 @@ while server_works:
             dist_y = players[j].y - players[i].y
 
             # i видит j
-            if (
+            if players[i].conn is not None and (  # Если не бот
                     abs(dist_x) <= players[i].w_vision // 2 + players[j].r
                     and
                     abs(dist_y) <= players[i].h_vision // 2 + players[j].r
@@ -152,7 +173,7 @@ while server_works:
                 visible_balls[i].append(' '.join([x_, y_, r_, c_]))
 
             # j видит i
-            if (
+            if players[j].conn is not None and (  # Если не бот
                     abs(dist_x) <= players[j].w_vision // 2 + players[i].r
                     and
                     abs(dist_y) <= players[j].h_vision // 2 + players[i].r
@@ -172,12 +193,13 @@ while server_works:
 
     # Отправляем новое состояние игрового поля
     for i in range(len(players)):
-        try:
-            players[i].conn.send(responses[i].encode())
-            players[i].errors = 0
-        except:  # FIXME: Скорректировать исключение
-            # Накапливаем ошибки при неудачных попытках подключения
-            players[i].errors += 1
+        if players[i].conn is not None:  # Если не бот
+            try:
+                players[i].conn.send(responses[i].encode())
+                players[i].errors = 0
+            except:  # FIXME: Скорректировать исключение
+                # Накапливаем ошибки при неудачных попытках подключения
+                players[i].errors += 1
 
     # Чистим список от отвалившихся игроков
     for player in players:
