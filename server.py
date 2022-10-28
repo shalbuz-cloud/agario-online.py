@@ -9,7 +9,9 @@ FPS = 100
 WIDTH_ROOM, HEIGHT_ROOM = 4000, 4000
 WIDTH_SERVER_WINDOW, HEIGHT_SERVER_WINDOW = 300, 300
 START_PLAYER_SIZE = 50  # px
+START_FOOD_SIZE = 15
 MOBS_QUANTITY = 25
+FOODS_QUANTITY = WIDTH_ROOM * HEIGHT_ROOM // 80_000
 
 
 class Player:
@@ -66,7 +68,18 @@ class Player:
             self.speed_x, self.speed_y = vector[0], vector[1]
 
 
+class Food:
+    """Корм на игровом поле"""
+
+    def __init__(self, x, y, r, color):
+        self.x = x
+        self.y = y
+        self.r = r
+        self.color = color
+
+
 def find(s: str) -> list:
+    """Обработка полученных данных от клиента"""
     obr = None  # Открывающаяся скобка
     for i in range(len(s)):
         if s[i] == "<":
@@ -100,7 +113,17 @@ players = [
         randint(0, HEIGHT_ROOM),
         randint(10, 100),
         str(randint(0, len(COLORS) - 1))
-    ) for i in range(MOBS_QUANTITY)
+    ) for _ in range(MOBS_QUANTITY)
+]
+
+# Создание стартового набора корма
+foods = [
+    Food(
+        randint(0, WIDTH_ROOM),
+        randint(0, HEIGHT_ROOM),
+        START_FOOD_SIZE,
+        str(randint(0, len(COLORS) - 1))
+    ) for _ in range(FOODS_QUANTITY)
 ]
 
 tick = -1  # Игровой цикл (ограничение)
@@ -153,13 +176,37 @@ while server_works:
     # Определим, что видит каждый игрок
     visible_balls = [[] for i in range(len(players))]
     for i in range(len(players)):
+        # Какой корм видит i игрок
+        for f in range(len(foods)):
+            dist_x = foods[f].x - players[i].x
+            dist_y = foods[f].y - players[i].y
+
+            # i игрок видит k корм
+            if (  # TODO: Перенести логику в отдельную функцию
+                    abs(dist_x) <= players[i].w_vision // 2 + foods[f].r
+                    and
+                    abs(dist_y) <= players[i].h_vision // 2 * foods[f].r
+            ):
+                # i может съесть k корм
+                if (dist_x ** 2 + dist_y ** 2) ** 0.5 <= players[i].r:
+                    foods[f].r = 0  # FIXME: Удалять объект
+
+                if players[i].conn is not None and foods[f].r is not None:  # FIXME
+                    # Подготовим данные  # TODO: вывести в отд. функцию
+                    x_ = str(round(dist_x))
+                    y_ = str(round(dist_y))
+                    r_ = str(round(foods[f].r))
+                    c_ = foods[f].color
+
+                    visible_balls[i].append(' '.join([x_, y_, r_, c_]))
+
         for j in range(i + 1, len(players)):
             # Рассматриваем пару i и j игрока
             dist_x = players[j].x - players[i].x
             dist_y = players[j].y - players[i].y
 
             # i видит j
-            if (
+            if (  # TODO: Перенести логику в отдельную функцию
                     abs(dist_x) <= players[i].w_vision // 2 + players[j].r
                     and
                     abs(dist_y) <= players[i].h_vision // 2 + players[j].r
@@ -232,6 +279,11 @@ while server_works:
             if player.conn is not None:
                 player.conn.close()
             players.remove(player)
+
+    # Чистим список съеденных объектов
+    for f in foods:
+        if f.r == 0:
+            foods.remove(f)
 
     # Нарисуем состояние комнаты
     for event in pygame.event.get():
