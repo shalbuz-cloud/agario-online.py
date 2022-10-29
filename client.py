@@ -7,6 +7,25 @@ from config import COLORS
 WIDTH_WINDOW, HEIGHT_WINDOW = 1000, 800
 
 
+class Me:
+    def __init__(self, data: str):
+        data = data.split()
+        self.r = int(data[0])
+        self.color = data[1]
+
+    def update(self, new_radius: int):
+        self.r = new_radius
+
+    def draw(self):
+        if self.r != 0:
+            pygame.draw.circle(
+                screen,
+                COLORS[self.color],
+                (WIDTH_WINDOW // 2, HEIGHT_WINDOW // 2),
+                self.r
+            )
+
+
 def find(s: str) -> str:
     obr = None
     for i in range(len(s)):
@@ -35,7 +54,7 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 sock.connect(('localhost', 10000))
 
-color = sock.recv(16).decode()
+me = Me(sock.recv(64).decode())  # Получаем данные от сервера
 
 # Создание окна игры
 pygame.init()
@@ -57,7 +76,7 @@ while running:
         v = (pos[0] - WIDTH_WINDOW // 2, pos[1] - HEIGHT_WINDOW // 2)
 
         # Если вектор меньше радиуса бактерии - никуда не двигаемся
-        if v[0] ** 2 + v[1] ** 2 <= 50 ** 2:
+        if v[0] ** 2 + v[1] ** 2 <= me.r ** 2:
             v = (0, 0)
 
     # Отправляем вектор желаемого направления движения, если он поменялся
@@ -72,11 +91,11 @@ while running:
 
     # Рисуем новое состояние игрового поля
     screen.fill('gray25')
-    pygame.draw.circle(
-        screen, COLORS[color], (WIDTH_WINDOW // 2, HEIGHT_WINDOW // 2), 50
-    )
     if data != ['']:
-        draw_enemies(data)
+        me.update(int(data[0]))
+        draw_enemies(data[1:])
+        me.draw()
+
     pygame.display.update()
 
 pygame.quit()

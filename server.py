@@ -92,6 +92,11 @@ def find(s: str) -> list:
     return []  # ""
 
 
+def calculate_radius(radius1: int, radius2: int):
+    """Вычисление нового радиуса после поглощения другого объекта"""
+    return (radius1 ** 2 + radius2 ** 2) ** 0.5
+
+
 # Создание сокета  # TODO: Сделать сокет асинхронным
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -147,7 +152,8 @@ while server_works:
                 START_PLAYER_SIZE,
                 str(randint(0, len(COLORS) - 1))
             )
-            new_player.conn.send(new_player.color.encode())
+            message = " ".join([str(new_player.r), new_player.color])
+            new_player.conn.send(message.encode())
             players.append(new_player)
 
         except BlockingIOError:
@@ -189,6 +195,8 @@ while server_works:
             ):
                 # i может съесть k корм
                 if (dist_x ** 2 + dist_y ** 2) ** 0.5 <= players[i].r:
+                    # Изменим радиус i игрока
+                    players[i].r = calculate_radius(players[i].r, foods[f].r)
                     foods[f].r = 0  # FIXME: Удалять объект
 
                 if players[i].conn is not None and foods[f].r is not None:  # FIXME
@@ -216,7 +224,7 @@ while server_works:
                 if (dist_x ** 2 + dist_y ** 2) ** 0.5 <= players[i].r \
                         and players[i].r > 1.1 * players[j].r:
                     # Изменим радиус i игрока
-                    ...
+                    players[i].r = calculate_radius(players[i].r, players[j].r)
                     # Обнулим данные игрока, чтобы не отключать сразу
                     players[j].r = 0
                     players[j].speed_x = 0
@@ -242,7 +250,7 @@ while server_works:
                 if (dist_x ** 2 + dist_y ** 2) ** 0.5 <= players[j].r \
                         and players[j].r > 1.1 * players[i].r:
                     # Изменим радиус j игрока
-                    ...
+                    players[j].r = calculate_radius(players[j].r, players[i].r)
                     # Обнулим данные игрока, чтобы не отключать сразу
                     players[i].r = 0
                     players[i].speed_x = 0
@@ -260,6 +268,8 @@ while server_works:
     # Формируем ответ каждому игроку
     responses = ['' for i in range(len(players))]
     for i in range(len(players)):
+        r_ = str(round(players[i].r))
+        visible_balls[i] = [r_] + visible_balls[i]  # FIXME
         responses[i] = "<%s>" % ",".join(visible_balls[i])
 
     # Отправляем новое состояние игрового поля
