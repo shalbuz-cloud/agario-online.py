@@ -1,10 +1,12 @@
 import socket
-from random import randint
+from random import randint, choice
+from typing import List
 
 import pygame
 
 from config import COLORS
 
+# TODO: Перенести константы в конфиг файл
 FPS = 100
 WIDTH_ROOM, HEIGHT_ROOM = 4000, 4000
 WIDTH_SERVER_WINDOW, HEIGHT_SERVER_WINDOW = 300, 300
@@ -12,6 +14,7 @@ START_PLAYER_SIZE = 50  # px
 START_FOOD_SIZE = 15
 MOBS_QUANTITY = 25
 FOODS_QUANTITY = WIDTH_ROOM * HEIGHT_ROOM // 80_000
+SPEED_RATE = 30  # Коэффициент скорости
 
 
 class Player:
@@ -28,7 +31,7 @@ class Player:
 
         self.errors: int = 0
 
-        self.abs_speed: int = 1
+        self.abs_speed: int = SPEED_RATE / (r ** 0.5)
         self.speed_x: int = 5
         self.speed_y: int = 2
 
@@ -52,6 +55,10 @@ class Player:
                 self.y += self.speed_y
         else:  # Не достиг стен
             self.y += self.speed_y
+
+        # abs_speed
+        # TODO: Менять абс. скорость только при изменении размера
+        self.abs_speed = SPEED_RATE / (self.r ** 0.5)
 
     def change_speed(self, vector: list) -> None:
 
@@ -96,6 +103,9 @@ def calculate_radius(radius1: int, radius2: int):
     """Вычисление нового радиуса после поглощения другого объекта"""
     return (radius1 ** 2 + radius2 ** 2) ** 0.5
 
+
+players: List[Player]
+foods: List[Food]
 
 # Создание сокета  # TODO: Сделать сокет асинхронным
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -144,14 +154,22 @@ while server_works:
             client, addr = server.accept()
             print('Подключился ', addr)
             client.setblocking(False)
+
+            # Появляемся на месте корма, чтобы не появиться
+            # внутри другого игрока.
+            spawn = choice(foods)
             new_player = Player(
                 client,
                 addr,
-                randint(0, WIDTH_ROOM),
-                randint(0, HEIGHT_ROOM),
+                spawn.x,
+                spawn.y,
                 START_PLAYER_SIZE,
                 str(randint(0, len(COLORS) - 1))
             )
+
+            # Удаляем использованный корм, чтобы не увеличить начальный объем
+            foods.remove(spawn)
+
             message = " ".join([str(new_player.r), new_player.color])
             new_player.conn.send(message.encode())
             players.append(new_player)
@@ -161,6 +179,36 @@ while server_works:
         except KeyboardInterrupt:
             server.close()
             break
+
+        # Дополняем список ботов
+        for i in range(MOBS_QUANTITY - len(players)):
+            if len(foods) > 0:
+                spawn = choice(foods)  # TODO: Вынести в отдельный метод
+
+                # TODO: Вынести создание ботов в метод класса
+                # TODO: Подсчет общего кол-во игроков в классе
+                players.append(
+                    Player(
+                        None,
+                        None,
+                        spawn.x,
+                        spawn.y,
+                        randint(10, 100),
+                        str(randint(0, len(COLORS) - 1))
+                    )
+                )
+                foods.remove(spawn)
+
+        # Дополняем список корма
+        for i in range(FOODS_QUANTITY - len(foods)):
+            foods.append(
+                Food(
+                    randint(0, WIDTH_ROOM),
+                    randint(0, HEIGHT_ROOM),
+                    START_FOOD_SIZE,
+                    str(randint(0, len(COLORS) - 1))
+                )
+            )
 
     # Считываем команды игроков
     for player in players:
