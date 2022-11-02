@@ -25,7 +25,10 @@ class Player:
         self.y: int | float = y
         self.r: int | float = r
         self.color: str = color
+        self.scale: int = 1
 
+        self.width_window: int = 1000
+        self.height_window: int = 800
         self.w_vision: int = 1000
         self.h_vision: int = 800
 
@@ -59,6 +62,26 @@ class Player:
         # abs_speed
         # TODO: Менять абс. скорость только при изменении размера
         self.abs_speed = SPEED_RATE / (self.r ** 0.5)
+
+        # Уменьшаем размер с течением времени
+        if self.r >= 100:
+            self.r -= self.r * 0.0001
+
+        # Изменим масштаб игрока
+        # Если радиус большой, увеличиваем масштаб
+        # TODO: Плавное масштабирование
+        if self.r >= self.w_vision / 4 or self.r >= self.h_vision / 4:
+            # Если игрок не видит всю карту
+            if self.w_vision <= WIDTH_ROOM or self.h_vision <= HEIGHT_ROOM:
+                self.scale *= 2
+                # TODO: Вывести в отдельную функцию
+                self.w_vision = self.width_window * self.scale
+                self.h_vision = self.height_window * self.scale
+        if self.r < self.w_vision / 8 and self.r < self.h_vision:
+            if self.scale > 1:
+                self.scale //= 2
+                self.w_vision = self.width_window * self.scale
+                self.h_vision = self.height_window * self.scale
 
     def change_speed(self, vector: list) -> None:
 
@@ -247,11 +270,12 @@ while server_works:
                     players[i].r = calculate_radius(players[i].r, foods[f].r)
                     foods[f].r = 0  # FIXME: Удалять объект
 
-                if players[i].conn is not None and foods[f].r is not None:  # FIXME
+                # TODO: Оптимизировать проверку соединения
+                if players[i].conn is not None and foods[f].r is not None:
                     # Подготовим данные  # TODO: вывести в отд. функцию
-                    x_ = str(round(dist_x))
-                    y_ = str(round(dist_y))
-                    r_ = str(round(foods[f].r))
+                    x_ = str(round(dist_x / players[i].scale))
+                    y_ = str(round(dist_y / players[i].scale))
+                    r_ = str(round(foods[f].r / players[i].scale))
                     c_ = foods[f].color
 
                     visible_balls[i].append(' '.join([x_, y_, r_, c_]))
@@ -280,9 +304,9 @@ while server_works:
 
                 if players[i].conn is not None:  # Если не бот
                     # Подготовим данные к добавлению в список видимых игроков
-                    x_ = str(round(dist_x))
-                    y_ = str(round(dist_y))
-                    r_ = str(round(players[j].r))
+                    x_ = str(round(dist_x / players[i].scale))
+                    y_ = str(round(dist_y / players[i].scale))
+                    r_ = str(round(players[j].r / players[i].scale))
                     c_ = players[j].color
 
                     visible_balls[i].append(' '.join([x_, y_, r_, c_]))
@@ -306,9 +330,9 @@ while server_works:
 
                 if players[j].conn is not None:  # Если не бот
                     # Подготовим данные к добавлению в список видимых игроков
-                    x_ = str(round(-dist_x))
-                    y_ = str(round(-dist_y))
-                    r_ = str(round(players[i].r))
+                    x_ = str(round(-dist_x / players[j].scale))
+                    y_ = str(round(-dist_y / players[j].scale))
+                    r_ = str(round(players[i].r / players[j].scale))
                     c_ = players[i].color
 
                     visible_balls[j].append(' '.join([x_, y_, r_, c_]))
@@ -316,7 +340,7 @@ while server_works:
     # Формируем ответ каждому игроку
     responses = ['' for i in range(len(players))]
     for i in range(len(players)):
-        r_ = str(round(players[i].r))
+        r_ = str(round(players[i].r / players[i].scale))
         visible_balls[i] = [r_] + visible_balls[i]  # FIXME
         responses[i] = "<%s>" % ",".join(visible_balls[i])
 
