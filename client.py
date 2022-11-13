@@ -4,7 +4,8 @@ import pygame
 
 from config import COLORS
 
-WIDTH_WINDOW, HEIGHT_WINDOW = 1000, 800
+WIDTH_WINDOW, HEIGHT_WINDOW = 1500, 1000
+GRID_COLOR = (150, 150, 150)
 
 
 class Me:
@@ -23,6 +24,45 @@ class Me:
                 COLORS[self.color],
                 (WIDTH_WINDOW // 2, HEIGHT_WINDOW // 2),
                 self.r
+            )
+
+
+class Grid:
+    def __init__(self, screen):
+        self.screen = screen
+        self.x = 0
+        self.y = 0
+        self.start_size = 200
+        self.size = self.start_size
+
+    def update(self, coord_x: int, coord_y: int, scale: int):
+        self.size = self.start_size // scale
+        self.x = -self.size + -coord_x % self.size
+        self.y = -self.size + -coord_y % self.size
+
+    def draw(self):
+        # TODO: Перенести draw в отдельный класс
+        # Вертикальные полосы
+        for i in range(int(WIDTH_WINDOW / self.size + 1)):
+            # for i in range(WIDTH_WINDOW // self.size + 2):
+            pygame.draw.line(
+                self.screen,
+                GRID_COLOR,
+                # координаты верхнего конца отрезка
+                [self.x + i * self.size, 0],
+                # координаты нижнего конца отрезка
+                [self.x + i * self.size, HEIGHT_WINDOW],
+                1
+            )
+
+        # Горизонтальные полосы
+        for i in range(int(HEIGHT_WINDOW / self.size + 1)):
+            pygame.draw.line(
+                self.screen,
+                GRID_COLOR,
+                [0, self.y + i * self.size],
+                [WIDTH_WINDOW, self.y + i * self.size],  # TODO: оптимизировать
+                1
             )
 
 
@@ -49,17 +89,26 @@ def draw_enemies(data):
         pygame.draw.circle(screen, c, (x, y), r)
 
 
+# Создание окна игры
+pygame.init()
+screen = pygame.display.set_mode((WIDTH_WINDOW, HEIGHT_WINDOW))
+pygame.display.set_caption('Agar.io')
+
 # Подключение к серверу
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 sock.connect(('localhost', 10000))
 
-me = Me(sock.recv(64).decode())  # Получаем данные от сервера
+# Отправляем серверу свой ник и размеры окна
+my_name = 'Sype'  # TODO: Ввод пользователем через интерфейс
+sock.send(('.%s.' % ' '.join(
+    [my_name, str(WIDTH_WINDOW), str(HEIGHT_WINDOW)]
+)).encode())
 
-# Создание окна игры
-pygame.init()
-screen = pygame.display.set_mode((WIDTH_WINDOW, HEIGHT_WINDOW))
-pygame.display.set_caption('Agar.io')
+# Получаем свой размер и цвет
+me = Me(sock.recv(64).decode())
+sock.send('!'.encode())  # Отправляем подтверждение на сервер
+grid = Grid(screen)
 
 running = True
 vector = (0, 0)
@@ -86,13 +135,17 @@ while running:
         sock.send(message.encode())
 
     # Получаем от сервера новое состояние игрового поля
-    data = sock.recv(2**20).decode()
+    data = sock.recv(2 ** 20).decode()
     data = find(data).split(',')
 
-    # Рисуем новое состояние игрового поля
-    screen.fill('gray25')
+    # Обработка сообщения с сервера
     if data != ['']:
-        me.update(int(data[0]))
+        parameters = list(map(int, data[0].split()))
+        me.update(int(parameters[0]))
+        grid.update(*parameters[1:])
+        # Рисуем новое состояние игрового поля
+        screen.fill('gray25')
+        grid.draw()
         draw_enemies(data[1:])
         me.draw()
 

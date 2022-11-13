@@ -19,6 +19,7 @@ SPEED_RATE = 30  # Коэффициент скорости
 
 class Player:
     def __init__(self, conn, addr, x, y, r, color):
+        self.name: str = "Mob"  # FIXME: Вынести в отдельный класс
         self.conn = conn
         self.addr = addr
         self.x: int | float = x
@@ -33,10 +34,16 @@ class Player:
         self.h_vision: int = 800
 
         self.errors: int = 0
-
-        self.abs_speed: int = SPEED_RATE / (r ** 0.5)
+        self.ready: bool = False
+        self.abs_speed: int | float = SPEED_RATE / (r ** 0.5)
         self.speed_x: int = 5
         self.speed_y: int = 2
+
+    def set_options(self, data: str):
+        data = data[1:-1].split()
+        self.name = data[0]
+        self.width_window = self.w_vision = int(data[1])
+        self.height_window = self.h_vision = int(data[2])
 
     def update(self) -> None:  # TODO: Убрать дублирование кода
         # x coordinate
@@ -193,8 +200,6 @@ while server_works:
             # Удаляем использованный корм, чтобы не увеличить начальный объем
             foods.remove(spawn)
 
-            message = " ".join([str(new_player.r), new_player.color])
-            new_player.conn.send(message.encode())
             players.append(new_player)
 
         except BlockingIOError:
@@ -238,9 +243,18 @@ while server_works:
         if player.conn is not None:  # Если не бот
             try:
                 data = player.conn.recv(1024).decode()
-                data = find(data)
-                # Обрабатываем команды
-                player.change_speed(data)
+                if data[0] == "!":  # готов к обмену данными
+                    player.ready = True
+                else:
+                    if data[0] == "." and data[-1] == ".":  # name, size
+                        player.set_options(data)
+                        message = " ".join(
+                            [str(START_PLAYER_SIZE), player.color]
+                        ).encode()
+                        player.conn.send(message)
+                    else:  # cursor
+                        data = find(data)
+                        player.change_speed(data)
             except:
                 pass
         else:
@@ -341,12 +355,16 @@ while server_works:
     responses = ['' for i in range(len(players))]
     for i in range(len(players)):
         r_ = str(round(players[i].r / players[i].scale))
-        visible_balls[i] = [r_] + visible_balls[i]  # FIXME
+        x_ = str(round(players[i].x / players[i].scale))
+        y_ = str(round(players[i].y / players[i].scale))
+        scale_ = str(players[i].scale)
+        visible_balls[i] = [' '.join([r_, x_, y_, scale_])] + visible_balls[i]
         responses[i] = "<%s>" % ",".join(visible_balls[i])
 
     # Отправляем новое состояние игрового поля
     for i in range(len(players)):
-        if players[i].conn is not None:  # Если не бот
+        # TODO: Оптимизировать условие
+        if players[i].conn is not None and players[i].ready:  # Если не бот
             try:
                 players[i].conn.send(responses[i].encode())
                 players[i].errors = 0
