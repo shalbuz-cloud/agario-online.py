@@ -26,6 +26,8 @@ class Me:
                 self.r
             )
 
+        write_name(WIDTH_WINDOW // 2, HEIGHT_WINDOW // 2, self.r, my_name)
+
 
 class Grid:
     def __init__(self, screen):
@@ -87,6 +89,16 @@ def draw_enemies(data):
         r = int(j[2])
         c = COLORS[j[3]]
         pygame.draw.circle(screen, c, (x, y), r)
+
+        if len(j) == 5:
+            write_name(x, y, r, j[4])
+
+
+def write_name(coord_x: int, coord_y: int, r: int, name: str) -> None:
+    font = pygame.font.Font(None, r)
+    text = font.render(name, True, (0, 0, 0))
+    rect = text.get_rect(center=(coord_x, coord_y))
+    screen.blit(text, rect)
 
 
 # Создание окна игры

@@ -322,8 +322,18 @@ while server_works:
                     y_ = str(round(dist_y / players[i].scale))
                     r_ = str(round(players[j].r / players[i].scale))
                     c_ = players[j].color
+                    # n_ = ""
+                    # if players[j].r >= 30 * players[i].scale:
+                    #     n_ = players[j].name
+                    #
+                    # visible_balls[i].append(' '.join([x_, y_, r_, c_, n_]))
+                    n_ = players[j].name
 
-                    visible_balls[i].append(' '.join([x_, y_, r_, c_]))
+                    data = [x_, y_, r_, c_]
+                    if players[j].r >= 30 * players[i].scale:
+                        data.append(n_)
+
+                    visible_balls[j].append(' '.join(data))
 
             # j видит i
             if (
@@ -348,8 +358,13 @@ while server_works:
                     y_ = str(round(-dist_y / players[j].scale))
                     r_ = str(round(players[i].r / players[j].scale))
                     c_ = players[i].color
+                    n_ = players[i].name
 
-                    visible_balls[j].append(' '.join([x_, y_, r_, c_]))
+                    data = [x_, y_, r_, c_]
+                    if players[i].r >= 30 * players[j].scale:
+                        data.append(n_)
+
+                    visible_balls[j].append(' '.join(data))
 
     # Формируем ответ каждому игроку
     responses = ['' for i in range(len(players))]
