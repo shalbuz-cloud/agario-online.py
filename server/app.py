@@ -34,6 +34,7 @@ class Player:
         self.h_vision: int = 800
 
         self.errors: int = 0
+        self.dead: int = 0
         self.ready: bool = False
         self.abs_speed: int | float = SPEED_RATE / (r ** 0.5)
         self.speed_x: int = 5
@@ -67,8 +68,10 @@ class Player:
             self.y += self.speed_y
 
         # abs_speed
-        # TODO: Менять абс. скорость только при изменении размера
-        self.abs_speed = SPEED_RATE / (self.r ** 0.5)
+        if self.r != 0:
+            self.abs_speed = SPEED_RATE / (self.r ** 0.5)
+        else:
+            self.abs_speed = 0
 
         # Уменьшаем размер с течением времени
         if self.r >= 100:
@@ -388,9 +391,14 @@ while server_works:
                 players[i].errors += 1
 
     # Чистим список от отвалившихся игроков
-    for player in players:
+    for player in players:  # TODO: Оптимизировать
         # TODO: Вынести статус игрока в отдельный параметр
-        if player.errors >= 500 or (player.r == 0):
+        if player.r == 0:
+            if player.conn is not None:
+                player.dead += 1
+            else:
+                player.dead += 300
+        if player.errors >= 500 or player.dead >= 300:
             if player.conn is not None:
                 player.conn.close()
             players.remove(player)

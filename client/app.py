@@ -26,7 +26,7 @@ class Me:
                 self.r
             )
 
-        write_name(WIDTH_WINDOW // 2, HEIGHT_WINDOW // 2, self.r, my_name)
+            write_name(WIDTH_WINDOW // 2, HEIGHT_WINDOW // 2, self.r, my_name)
 
 
 class Grid:
@@ -146,9 +146,13 @@ while running:
         message = "<%i,%i>" % (vector[0], vector[1])
         sock.send(message.encode())
 
-    # Получаем от сервера новое состояние игрового поля
-    data = sock.recv(2 ** 20).decode()
-    data = find(data).split(',')
+    # Получаем новое состояние игрового поля
+    try:
+        data = sock.recv(2 ** 20).decode()
+        data = find(data).split(',')
+    except ConnectionAbortedError:
+        running = False
+        break
 
     # Обработка сообщения с сервера
     if data != ['']:
