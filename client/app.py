@@ -45,7 +45,7 @@ class Grid:
     def draw(self):
         # TODO: Перенести draw в отдельный класс
         # Вертикальные полосы
-        for i in range(int(WIDTH_WINDOW / self.size + 1)):
+        for i in range(WIDTH_WINDOW // self.size + 2):
             # for i in range(WIDTH_WINDOW // self.size + 2):
             pygame.draw.line(
                 self.screen,
@@ -58,7 +58,7 @@ class Grid:
             )
 
         # Горизонтальные полосы
-        for i in range(int(HEIGHT_WINDOW / self.size + 1)):
+        for i in range(HEIGHT_WINDOW // self.size + 2):
             pygame.draw.line(
                 self.screen,
                 GRID_COLOR,
