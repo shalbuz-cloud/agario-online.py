@@ -1,16 +1,13 @@
-from typing import Union, Optional
-from socket import socket
+from abc import ABC, abstractmethod
+from typing import Union, Optional, List
 from math import sqrt
 
 from server.colors.color import get_rgb
 from server.core.assist import wall_check
-
-FPS = 100
-WIDTH_ROOM, HEIGHT_ROOM = 4_000, 4_000
-WIDTH_SERVER_WINDOW, HEIGHT_SERVER_WINDOW = 300, 300
+from server.data.config import WIDTH_ROOM, HEIGHT_ROOM
 
 
-class BaseUnit:
+class BaseUnit(ABC):
     """Базовая модель корма, игроков, ботов"""
 
     __START_SIZE: Optional[int] = None  # px
@@ -30,6 +27,10 @@ class BaseUnit:
         self._color: tuple = get_rgb(color)
         self._radius: Optional[int, float] = radius
 
+    @classmethod
+    @abstractmethod
+    def create(cls): pass
+
 
 class Unit(BaseUnit):
     """Базовая модель динамических объектов (игроки, боты)"""
@@ -38,7 +39,7 @@ class Unit(BaseUnit):
     __SPEED_RATE = 30  # Коэффициент скорости
 
     def __init__(self, *args, **kwargs) -> None:
-        super(Unit, self).__init__(*args, **kwargs)
+        super(Unit, self).__init__(radius=self.__START_SIZE, *args, **kwargs)
         self._abs_speed = self.__SPEED_RATE / sqrt(self._radius)
         self._speed_x = 5
         self._speed_y = 2
@@ -65,11 +66,13 @@ class Unit(BaseUnit):
 
         ...
 
-    def change_speed(self) -> None:
-        pass
-
     def calculate_radius(self, radius: Union[int, float]) -> Union[int, float]:
-        pass
+        """Вычисление нового радиуса после поглощения другого объекта"""
+        return sqrt(pow(self._radius, 2) + pow(radius, 2))
+
+    @classmethod
+    def create(cls):
+        ...
 
 
 class Food(BaseUnit):
@@ -79,7 +82,7 @@ class Food(BaseUnit):
     __MAX_QUANTITY = WIDTH_ROOM * HEIGHT_ROOM // 80_000
 
     def __init__(self, *args, **kwargs) -> None:
-        super(Food, self).__init__(*args, **kwargs)
+        super(Food, self).__init__(radius=self.__START_SIZE, *args, **kwargs)
 
 
 class Player(Unit):
@@ -110,12 +113,40 @@ class Player(Unit):
         self._width_window = self._w_vision = int(data[1])
         self._height_window = self._h_vision = int(data[2])
 
+    def set_scale(self):
+        self._w_vision = self._width_window * self._scale
+        self._h_vision = self._height_window * self._scale
+
+    def update(self) -> None:
+        super(Player, self).update()
+        if (
+                self._radius >= self._w_vision / 4
+                or self._radius >= self._h_vision / 4
+        ):
+            # Если игрок не видит всю карту
+            if self._w_vision <= WIDTH_ROOM or self._h_vision <= HEIGHT_ROOM:
+                self._scale *= 2
+                self.set_scale()
+        if self._radius < self._w_vision / 8 and self._radius < self._h_vision:
+            if self._scale > 1:
+                self._scale //= 2
+                self.set_scale()
+
+    def change_speed(self, vector: List[Union[int, float]]) -> None:
+        # Если курсор на бактерии
+        if vector[0] == 0 and vector[1] == 0:
+            self._speed_x = 0
+            self._speed_y = 0
+        else:
+            # Вычисляем длину вектора по теореме Пифагора
+            len_vector = sqrt(pow(vector[0], 2) + pow(vector[1], 2))
+            # Нормализуем вектор
+            vector = (vector[0] / len_vector, vector[1] / len_vector)
+            vector = (vector[0] * self._abs_speed, vector[1] * self._abs_speed)
+            self._speed_x, self._speed_y = vector[0], vector[1]
+
 
 class Bot(Unit):
 
     def __init__(self, *args, **kwargs) -> None:
         super(Bot, self).__init__(*args, **kwargs)
-
-
-p = Player(10, 20, 13, 50, 'Alex')
-print(p.__dict__)

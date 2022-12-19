@@ -140,7 +140,7 @@ def calculate_radius(radius1: int, radius2: int):
 players: List[Player]
 foods: List[Food]
 
-# Создание сокета  # TODO: Сделать сокет асинхронным
+# Создание сокета # TODO: Сделать сокет асинхронным
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 server.bind(('localhost', 10000))
