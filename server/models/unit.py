@@ -10,8 +10,8 @@ from server.data.config import WIDTH_ROOM, HEIGHT_ROOM
 class BaseUnit(ABC):
     """Базовая модель корма, игроков, ботов"""
 
-    __START_SIZE: Optional[int] = None  # px
-    __MAX_QUANTITY: Optional[int] = None
+    _START_SIZE: Optional[int] = None  # px
+    _MAX_QUANTITY: Optional[int] = None
 
     def __init__(
             self,
@@ -29,18 +29,19 @@ class BaseUnit(ABC):
 
     @classmethod
     @abstractmethod
-    def create(cls): pass
+    def create(cls) -> list: pass
 
 
 class Unit(BaseUnit):
     """Базовая модель динамических объектов (игроки, боты)"""
 
-    __START_SIZE = 50
-    __SPEED_RATE = 30  # Коэффициент скорости
+    _START_SIZE = 50
+    _SPEED_RATE = 30  # Коэффициент скорости
+    _MAX_QUANTITY = 30
 
     def __init__(self, *args, **kwargs) -> None:
-        super(Unit, self).__init__(radius=self.__START_SIZE, *args, **kwargs)
-        self._abs_speed = self.__SPEED_RATE / sqrt(self._radius)
+        super(Unit, self).__init__(radius=self._START_SIZE, *args, **kwargs)
+        self._abs_speed = self._SPEED_RATE / sqrt(self._radius)
         self._speed_x = 5
         self._speed_y = 2
         self._is_dead = False
@@ -56,7 +57,7 @@ class Unit(BaseUnit):
 
         # abs_speed
         if self._radius != 0:  # TODO: is_dead()
-            self._abs_speed = self.__SPEED_RATE / sqrt(self._radius)
+            self._abs_speed = self._SPEED_RATE / sqrt(self._radius)
         else:
             self._abs_speed = 0
 
@@ -71,18 +72,22 @@ class Unit(BaseUnit):
         return sqrt(pow(self._radius, 2) + pow(radius, 2))
 
     @classmethod
-    def create(cls):
-        ...
+    def create(cls) -> list:
+        pass
 
 
 class Food(BaseUnit):
     """Корм на игровом поле"""
 
-    __START_SIZE = 15
-    __MAX_QUANTITY = WIDTH_ROOM * HEIGHT_ROOM // 80_000
+    _START_SIZE = 15
+    _MAX_QUANTITY = WIDTH_ROOM * HEIGHT_ROOM // 80_000
 
     def __init__(self, *args, **kwargs) -> None:
-        super(Food, self).__init__(radius=self.__START_SIZE, *args, **kwargs)
+        super(Food, self).__init__(radius=self._START_SIZE, *args, **kwargs)
+
+    @classmethod
+    def create(cls):
+        ...
 
 
 class Player(Unit):

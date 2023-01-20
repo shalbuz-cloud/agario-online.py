@@ -1,8 +1,6 @@
 import sys
-import typing
 from typing import List, Union, Callable
 from random import randint
-from copy import deepcopy
 
 import pygame
 
@@ -38,12 +36,30 @@ class Game(metaclass=MetaSingleton):
             pygame.display.flip()
 
     @classmethod
-    def create_bot(cls) -> List[Bot]:
-        cls.generate_unit(Bot, ...)
-        ...
+    def create_bot(cls, quantity=None):
+        max_q = getattr(Bot, '_MAX_QUANTITY')
+
+        # bot slots left
+        left_q = max_q - len(cls.__bots)
+        left_q = left_q if left_q > 0 else 0
+        if left_q:
+            quantity = quantity if (quantity and quantity < left_q) else left_q
+            cls.__bots += cls.generate_unit(Bot, quantity)
+
+    @classmethod
+    def create_food(cls):
+        max_q = getattr(Food, '_MAX_QUANTITY')
+
+        # food slots left
+        left_q = max_q - len(cls.__foods)
+        left_q = left_q if left_q > 0 else 0
+        if left_q:
+            cls.__foods += cls.generate_unit(Food, left_q)
 
     @staticmethod
-    def generate_unit(category: Callable, quantity: int) -> List[Bot, Food]:
+    def generate_unit(
+            category: Callable, quantity: int
+    ) -> List[Union[Bot, Food]]:
         """Генерация списка ботов или еды"""
         return [
             category(
@@ -54,8 +70,8 @@ class Game(metaclass=MetaSingleton):
         ]
 
     @classmethod
-    def show_units(cls):  # FIXME: !!!
-        return cls.__bots, cls.__foods
+    def show_units(cls) -> tuple:
+        return len(cls.__bots), len(cls.__foods)
 
     @classmethod
     def close(cls):
@@ -65,5 +81,8 @@ class Game(metaclass=MetaSingleton):
 
 
 # Game.main_event()
-Game.generate_unit(Bot, 20)
-print(Game.show_units())
+game = Game()
+game.create_food()
+game.create_food()
+game.create_food()
+print(game.show_units())
