@@ -1,6 +1,7 @@
 import sys
 from typing import List, Union, Callable
 from random import randint
+import asyncio
 
 import pygame
 
@@ -12,28 +13,65 @@ from server.colors.palette import BASE_COLORS
 
 
 class Game(metaclass=MetaSingleton):
-    __running: bool = False
     __players: List[Player] = []
     __foods: List[Food] = []
     __bots: List[Bot] = []
 
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+
     @classmethod
-    def main_event(cls):
+    async def __main_event(cls, reader, writer):
         pygame.init()
         screen = pygame.display.set_mode(
             (WIDTH_SERVER_WINDOW, HEIGHT_SERVER_WINDOW)
         )
         clock = pygame.time.Clock()
-
-        while cls.__running:
-
+        addr = writer.get_extra_info('peername')
+        print('Connected by')
+        # while cls.__running:
+        while True:
             clock.tick(FPS)  # Ограничение fps
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     cls.close()
 
+            # Receive
+            try:
+                data = await reader.read(1024)
+                print(data)
+            except ConnectionError:
+                print('Client suddenly closed while receiving from %s' % addr)
+                break
+
+            if not data:
+                break
+
+            try:
+                data = '%i, %i' % (randint(0, 100), randint(0, 100))
+                print(data)
+                data = data.encode()
+                writer.write(data)
+            except ConnectionError:
+                print('Client suddenly closed, cannot send')
+                break
+
             pygame.display.flip()
+
+        writer.close()
+        print('Disconnect by', addr)
+
+    async def __main_loop(self):
+        srv = await asyncio.start_server(
+            self.__main_event, self.host, self.port
+        )
+        async with srv:
+            await srv.serve_forever()
+
+    def start(self):
+        asyncio.run(self.__main_loop())
 
     @classmethod
     def create_bot(cls, quantity=None):
@@ -75,14 +113,9 @@ class Game(metaclass=MetaSingleton):
 
     @classmethod
     def close(cls):
-        cls.__running = False
         pygame.quit()
         sys.exit()
 
 
-# Game.main_event()
-game = Game()
-game.create_food()
-game.create_food()
-game.create_food()
-print(game.show_units())
+game = Game('', 10000)
+game.start()
